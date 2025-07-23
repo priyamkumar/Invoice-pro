@@ -1,35 +1,36 @@
 import React, { useState, useEffect } from "react";
-import { Plus } from "lucide-react";
-import { InvoiceItem, TaxSettings } from "../../types";
+import { ArrowLeft, Save, X } from "lucide-react";
+import { InvoiceItem, TaxSettings, Invoice, Client } from "../../types";
 import { useInvoice } from "../../context/InvoiceContext";
 import {
   calculateItemAmount,
   calculateInvoiceTotals,
 } from "../../utils/calculations";
-import ClientSelector from "./ClientSelector";
-import ProductRow, { validateAllItems } from "./ProductRow";
+import ProductRow from "./ProductRow";
 import TaxToggle from "./TaxToggle";
-import InvoicePreview from "../InvoicePreview/InvoicePreview";
-import { storage } from "../../utils/storage";
 
-const InvoiceForm: React.FC = () => {
-  const { companyInfo, clients, products } = useInvoice();
-  const [selectedClientId, setSelectedClientId] = useState("");
-  const [invoiceDate, setInvoiceDate] = useState(
-    new Date().toISOString().split("T")[0]
+interface InvoiceEditFormProps {
+  invoice: Invoice;
+  client: Client;
+  onSave: (invoice: Invoice) => void;
+  onCancel: () => void;
+}
+
+const InvoiceEditForm: React.FC<InvoiceEditFormProps> = ({
+  invoice,
+  client,
+  onSave,
+  onCancel,
+}) => {
+  const { products } = useInvoice();
+  const [invoiceDate, setInvoiceDate] = useState(invoice.date.split("T")[0]);
+  const [items, setItems] = useState<InvoiceItem[]>(invoice.items);
+  const [taxSettings, setTaxSettings] = useState<TaxSettings>(
+    invoice.taxSettings
   );
-  const [invoiceNumber, setInvoiceNumber] = useState("1");
-  const [items, setItems] = useState<InvoiceItem[]>([]);
-  const [taxSettings, setTaxSettings] = useState<TaxSettings>({
-    showCGST: false,
-    showIGST: true,
-    showUTGST: false,
-    taxIncluded: false,
-  });
   const [termsAndConditions, setTermsAndConditions] = useState(
-    "1. Goods once accepted will not be taken back.\n2. If payment is not made within 15 days, Interest @ 18% will be charged extra.\n3. All disputes subject to Chandigarh Jurisdiction."
+    invoice.termsAndConditions
   );
-  const [showPreview, setShowPreview] = useState(false);
 
   const addItem = () => {
     const newItem: InvoiceItem = {
@@ -55,22 +56,7 @@ const InvoiceForm: React.FC = () => {
 
     // Recalculate amounts when relevant fields change
     if (["quantity", "rate", "taxRate"].includes(field)) {
-      const item = updatedItems[index];
-      const calculations = calculateItemAmount(
-        item.quantity,
-        item.rate,
-        item.taxRate,
-        taxSettings.taxIncluded,
-        taxSettings
-      );
-
-      updatedItems[index] = {
-        ...updatedItems[index],
-        amount: calculations.totalAmount,
-        cgst: calculations.cgst,
-        igst: calculations.igst,
-        utgst: calculations.utgst,
-      };
+      recalculateItem(updatedItems, index);
     }
 
     setItems(updatedItems);
@@ -81,30 +67,32 @@ const InvoiceForm: React.FC = () => {
     updatedFields: Partial<InvoiceItem>
   ) => {
     const updatedItems = [...items];
-    const prevItem = updatedItems[index];
-    const newItem = { ...prevItem, ...updatedFields };
-
-    const calculations = calculateItemAmount(
-      newItem.quantity,
-      newItem.rate,
-      newItem.taxRate,
-      taxSettings.taxIncluded,
-      taxSettings
-    );
-
-    updatedItems[index] = {
-      ...newItem,
-      amount: calculations.totalAmount,
-      cgst: calculations.cgst,
-      igst: calculations.igst,
-      utgst: calculations.utgst,
-    };
-
+    updatedItems[index] = { ...updatedItems[index], ...updatedFields };
+    recalculateItem(updatedItems, index);
     setItems(updatedItems);
   };
 
   const removeItem = (index: number) => {
     setItems(items.filter((_, i) => i !== index));
+  };
+
+  const recalculateItem = (items: InvoiceItem[], index: number) => {
+    const item = items[index];
+    const calculations = calculateItemAmount(
+      item.quantity,
+      item.rate,
+      item.taxRate,
+      taxSettings.taxIncluded,
+      taxSettings
+    );
+
+    items[index] = {
+      ...item,
+      amount: calculations.totalAmount,
+      cgst: calculations.cgst,
+      igst: calculations.igst,
+      utgst: calculations.utgst,
+    };
   };
 
   // Recalculate all items when tax settings change
@@ -132,32 +120,16 @@ const InvoiceForm: React.FC = () => {
 
   const totals = calculateInvoiceTotals(items);
 
-  const handlePreview = () => {
-    if (!selectedClientId || items.length === 0) {
-      alert(
-        "Please select a client and add at least one item to preview the invoice."
-      );
-      return;
-    }
-    const validation = validateAllItems(items);
-
-    if (!validation.isValid) {
-      alert("Please fill all fields."); // Show error message or prevent saving
+  const handleSave = () => {
+    if (items.length === 0) {
+      alert("Please add at least one item to save the invoice.");
       return;
     }
 
-    setShowPreview(true);
-  };
-  const selectedClient = clients.find((c) => c._id === selectedClientId);
-  if (showPreview && selectedClient) {
-    const invoice = {
-      id: "",
-      invoiceNumber: invoiceNumber,
+    const updatedInvoice: Invoice = {
+      ...invoice,
       date: invoiceDate,
-      clientId: selectedClientId,
       items,
-      companyInfo: companyInfo,
-      bankDetails: storage.getBankDetails(),
       taxSettings,
       termsAndConditions,
       totalAmount: totals.baseAmount,
@@ -165,29 +137,67 @@ const InvoiceForm: React.FC = () => {
       grandTotal: totals.grandTotal,
     };
 
-    return (
-      <InvoicePreview
-        invoice={invoice}
-        client={selectedClient}
-        onBack={() => setShowPreview(false)}
-        saved={false}
-      />
-    );
-  }
+    onSave(updatedInvoice);
+  };
 
   return (
     <div className="space-y-6">
       <div className="bg-white rounded-lg shadow-md p-6">
-        <h1 className="text-2xl font-bold text-gray-900 mb-6">
-          Create New Invoice
-        </h1>
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center">
+            <button
+              onClick={onCancel}
+              className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 mr-4"
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back
+            </button>
+            <h1 className="text-2xl font-bold text-gray-900">
+              Edit Invoice {invoice.invoiceNumber}
+            </h1>
+          </div>
+          <div className="flex space-x-3">
+            <button
+              onClick={onCancel}
+              className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+            >
+              <X className="h-4 w-4 mr-2" />
+              Cancel
+            </button>
+            <button
+              onClick={handleSave}
+              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
+            >
+              <Save className="h-4 w-4 mr-2" />
+              Save Changes
+            </button>
+          </div>
+        </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2">
-            <ClientSelector
-              selectedClientId={selectedClientId}
-              onSelectClient={setSelectedClientId}
-            />
+            <div className="bg-gray-50 rounded-lg p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                Client Information
+              </h3>
+              <div className="space-y-2">
+                <p>
+                  <span className="font-medium">Name:</span> {client.name}
+                </p>
+                <p>
+                  <span className="font-medium">GSTIN:</span> {client.gstin}
+                </p>
+                <p>
+                  <span className="font-medium">Address:</span> {client.address}
+                </p>
+                <p>
+                  <span className="font-medium">Phone:</span> {client.phone}
+                </p>
+                <p>
+                  <span className="font-medium">Email:</span> {client.email}
+                </p>
+              </div>
+            </div>
           </div>
 
           <div className="space-y-6">
@@ -197,27 +207,29 @@ const InvoiceForm: React.FC = () => {
               <h3 className="text-lg font-semibold text-gray-900 mb-4">
                 Invoice Details
               </h3>
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Invoice Number
-                </label>
-                <input
-                  type="text"
-                  value={invoiceNumber}
-                  onChange={(e) => setInvoiceNumber(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Invoice Date
-                </label>
-                <input
-                  type="date"
-                  value={invoiceDate}
-                  onChange={(e) => setInvoiceDate(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Invoice Number
+                  </label>
+                  <input
+                    type="text"
+                    value={invoice.invoiceNumber}
+                    disabled
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 text-gray-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Invoice Date
+                  </label>
+                  <input
+                    type="date"
+                    value={invoiceDate}
+                    onChange={(e) => setInvoiceDate(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
               </div>
             </div>
           </div>
@@ -232,7 +244,6 @@ const InvoiceForm: React.FC = () => {
             onClick={addItem}
             className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 transition-colors"
           >
-            <Plus className="h-4 w-4 mr-2" />
             Add Item
           </button>
         </div>
@@ -260,34 +271,19 @@ const InvoiceForm: React.FC = () => {
                   Rate
                 </th>
                 {taxSettings.showUTGST && (
-                  <>
                   <th className="px-3 py-2 text-center text-xs font-medium text-purple-600 uppercase">
-                    UTGST Rate
+                    UTGST
                   </th>
-                  <th className="px-3 py-2 text-center text-xs font-medium text-purple-600 uppercase">
-                    UTGST Amt.
-                  </th></>
                 )}
                 {taxSettings.showCGST && (
-                  <>
                   <th className="px-3 py-2 text-center text-xs font-medium text-green-600 uppercase">
-                    CGST Rate
+                    CGST
                   </th>
-                   <th className="px-3 py-2 text-center text-xs font-medium text-green-600 uppercase">
-                    CGST Amt.
-                  </th>
-                  </>
                 )}
                 {taxSettings.showIGST && (
-                  <>
-                    <th className="px-3 py-2 text-center text-xs font-medium text-orange-600 uppercase">
-                      IGST Rate
-                    </th>
-
-                    <th className="px-3 py-2 text-center text-xs font-medium text-orange-600 uppercase">
-                      IGST Amt.
-                    </th>
-                  </>
+                  <th className="px-3 py-2 text-center text-xs font-medium text-orange-600 uppercase">
+                    IGST
+                  </th>
                 )}
                 <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase">
                   Amount
@@ -318,7 +314,7 @@ const InvoiceForm: React.FC = () => {
 
         {items.length === 0 && (
           <div className="text-center py-8 text-gray-500">
-            No items added yet. Click "Add Item" to get started.
+            No items in this invoice. Click "Add Item" to add items.
           </div>
         )}
       </div>
@@ -373,17 +369,10 @@ const InvoiceForm: React.FC = () => {
               </div>
             </div>
           </div>
-
-          <button
-            onClick={handlePreview}
-            className="w-full mt-6 bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition-colors font-medium"
-          >
-            Preview Invoice
-          </button>
         </div>
       </div>
     </div>
   );
 };
 
-export default InvoiceForm;
+export default InvoiceEditForm;

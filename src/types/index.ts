@@ -37,6 +37,7 @@ export interface CompanyInfo {
   email: string;
   gstin: string;
   address: string;
+  bankDetails?: BankDetails; 
 }
 
 export interface BankDetails {
@@ -59,7 +60,7 @@ export interface TaxSettings {
 }
 
 export interface Invoice {
-  id: string;
+  _id?: string;
   invoiceNumber: string;
   date: string;
   clientId: string;

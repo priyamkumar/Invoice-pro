@@ -27,6 +27,7 @@ interface InvoiceContextType {
 
   saveInvoice: (invoice: Omit<Invoice, "id">) => void;
   deleteInvoice: (id: string) => void;
+  updateInvoice: (id: string, invoice: Partial<Invoice>) => void;
   updateCompanyInfo: (info: CompanyInfo) => void;
   updateBankDetails: (details: BankDetails) => void;
 }
@@ -181,6 +182,18 @@ export const InvoiceProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   };
 
+  const updateInvoice = async (id: string, invoiceUpdate: Partial<Invoice>) => {
+    try {
+      const updatedInvoice = await apiService.updateInvoice(id, invoiceUpdate);
+      setInvoices(invoices.map(invoice =>
+        invoice._id === id ? updatedInvoice : invoice
+      ));
+    } catch (error) {
+      console.error('Failed to update invoice:', error);
+      throw error;
+    }
+  };
+
   const updateCompanyInfo = async (info: CompanyInfo) => {
     try {
       await apiService.updateCompanyInfo(info);
@@ -217,6 +230,7 @@ export const InvoiceProvider: React.FC<{ children: React.ReactNode }> = ({
         deleteProduct,
         saveInvoice,
         deleteInvoice,
+        updateInvoice,
         updateCompanyInfo,
         updateBankDetails,
       }}

@@ -9,12 +9,14 @@ interface InvoicePreviewProps {
   invoice: Invoice;
   client: Client;
   onBack: () => void;
+  saved: Boolean
 }
 
 const InvoicePreview: React.FC<InvoicePreviewProps> = ({
   invoice,
   client,
   onBack,
+  saved
 }) => {
   const { saveInvoice } = useInvoice();
   const componentRef = useRef<HTMLDivElement>(null);
@@ -28,8 +30,8 @@ const InvoicePreview: React.FC<InvoicePreviewProps> = ({
         await saveInvoice(invoice);
         alert("Invoice saved successfully!");
         onBack();
-      } catch (error) {
-        alert("Failed to save invoice. Please try again.");
+      } catch (error: any) {
+        alert(error.message);
       }
     };
 
@@ -57,13 +59,13 @@ const InvoicePreview: React.FC<InvoicePreviewProps> = ({
                 <Printer className="h-4 w-4 mr-2" />
                 Print
               </button>
-              <button
+              {!saved && <button
                 onClick={handleSave}
                 className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
               >
                 <Save className="h-4 w-4 mr-2" />
                 Save Invoice
-              </button>
+              </button>}
             </div>
           </div>
         </div>
@@ -185,7 +187,7 @@ const InvoicePreview: React.FC<InvoicePreviewProps> = ({
                 </thead>
                 <tbody>
                   {invoice.items.map((item, index) => (
-                    <tr key={item.particulars}>
+                    <tr key={index}>
                       <td className="border border-gray-300 px-1 py-1 text-xs text-center">
                         {index + 1}
                       </td>

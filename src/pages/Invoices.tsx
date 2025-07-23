@@ -1,14 +1,16 @@
 import React from "react";
-import { FileText, Eye, Trash2, Calendar } from "lucide-react";
+import { FileText, Eye, Trash2, Calendar, Edit2 } from "lucide-react";
 import { useInvoice } from "../context/InvoiceContext";
 import InvoicePreview from "../components/InvoicePreview/InvoicePreview";
+import InvoiceEditForm from '../components/InvoiceForm/InvoiceEditForm';
 import { Invoice } from "../types";
 
 const Invoices: React.FC = () => {
-  const { invoices, clients, deleteInvoice } = useInvoice();
+  const { invoices, clients, deleteInvoice, updateInvoice } = useInvoice();
   const [previewInvoice, setPreviewInvoice] = React.useState<Invoice | null>(
     null
   );
+  const [editingInvoice, setEditingInvoice] = React.useState<Invoice | null>(null);
 
   const getClientName = (clientId: string) => {
     const client = clients.find((c) => c._id === clientId);
@@ -27,8 +29,53 @@ const Invoices: React.FC = () => {
     setPreviewInvoice(null);
   };
 
+  const handleEdit = (invoice: Invoice) => {
+    setEditingInvoice(invoice);
+    setPreviewInvoice(null);
+  };
+
+  const handleCloseEdit = () => {
+    setEditingInvoice(null);
+  };
+
+  const handleSaveEdit = async (updatedInvoice: Invoice) => {
+    try {
+      if(updatedInvoice._id) await updateInvoice(updatedInvoice._id, updatedInvoice);
+      setEditingInvoice(null);
+    } catch (error) {
+      console.error('Failed to update invoice:', error);
+      alert('Failed to update invoice. Please try again.');
+    }
+  };
+
+  if (editingInvoice) {
+    const client = getClientById(editingInvoice.clientId);
+    if (!client) {
+      return (
+        <div className="text-center py-12">
+          <p className="text-red-600">Client not found for this invoice.</p>
+          <button
+            onClick={handleCloseEdit}
+            className="mt-4 px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700"
+          >
+            Back to Invoices
+          </button>
+        </div>
+      );
+    }
+
+    return (
+      <InvoiceEditForm 
+        invoice={editingInvoice}
+        client={client}
+        onSave={handleSaveEdit}
+        onCancel={handleCloseEdit}
+      />
+    );
+  }
+
   if (previewInvoice) {
-    const client = getClientById(previewInvoice.clientId?._id);
+    const client = getClientById(previewInvoice.clientId);
     if (!client) {
       return (
         <div className="text-center py-12">
@@ -48,6 +95,7 @@ const Invoices: React.FC = () => {
         invoice={previewInvoice}
         client={client}
         onBack={handleClosePreview}
+        saved={true}
       />
     );
   }
@@ -112,7 +160,7 @@ const Invoices: React.FC = () => {
                       </div>
                     </td>
                     <td className="px-4 py-4 text-sm text-gray-900">
-                      {getClientName(invoice.clientId?._id)}
+                      {getClientName(invoice.clientId)}
                     </td>
                     <td className="px-4 py-4 text-sm text-gray-900 text-right">
                       ₹{invoice.totalAmount.toFixed(2)}
@@ -131,8 +179,15 @@ const Invoices: React.FC = () => {
                         >
                           <Eye className="h-4 w-4" />
                         </button>
+                        <button 
+                          className="p-2 text-gray-400 hover:text-green-600 transition-colors"
+                          title="Edit Invoice"
+                          onClick={() => handleEdit(invoice)}
+                        >
+                          <Edit2 className="h-4 w-4" />
+                        </button>
                         <button
-                          onClick={() => deleteInvoice(invoice._id)}
+                          onClick={() => invoice._id && deleteInvoice(invoice._id)}
                           className="p-2 text-gray-400 hover:text-red-600 transition-colors"
                         >
                           <Trash2 className="h-4 w-4" />

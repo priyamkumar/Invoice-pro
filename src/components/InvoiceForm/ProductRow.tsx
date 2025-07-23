@@ -71,7 +71,7 @@ const ProductRow: React.FC<ProductRowProps> = ({
         taxRate: product.taxRate,
       };
 
-      onBulkChange(index, updatedFields);
+      onBulkChange && onBulkChange(index, updatedFields);
     }
   };
 

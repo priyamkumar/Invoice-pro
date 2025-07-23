@@ -140,6 +140,13 @@ class ApiService {
     });
   }
 
+  async updateInvoice(id: string, invoice: Partial<Invoice>) {
+    return this.request<Invoice>(`/invoices/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(invoice),
+    });
+  }
+
    async deleteInvoice(id: string) {
     return this.request<Invoice>(`/invoices/${id}`, {
       method: 'DELETE',
