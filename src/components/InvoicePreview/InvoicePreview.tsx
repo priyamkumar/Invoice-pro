@@ -8,6 +8,7 @@ import { calculateInvoiceTotals } from "../../utils/calculations";
 interface InvoicePreviewProps {
   invoice: Invoice;
   client: Client;
+  isQuotation?: boolean;
   onBack: () => void;
   saved: Boolean
 }
@@ -15,6 +16,7 @@ interface InvoicePreviewProps {
 const InvoicePreview: React.FC<InvoicePreviewProps> = ({
   invoice,
   client,
+  isQuotation,
   onBack,
   saved
 }) => {
@@ -23,7 +25,7 @@ const InvoicePreview: React.FC<InvoicePreviewProps> = ({
   const handlePrint = useReactToPrint({
     contentRef: componentRef,
   });
-
+console.log(isQuotation)
   const handleSave = () => {
     const handleSaveAsync = async () => {
       try {
@@ -59,7 +61,7 @@ const InvoicePreview: React.FC<InvoicePreviewProps> = ({
                 <Printer className="h-4 w-4 mr-2" />
                 Print
               </button>
-              {!saved && <button
+              {!saved && !isQuotation &&<button
                 onClick={handleSave}
                 className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
               >
@@ -83,7 +85,7 @@ const InvoicePreview: React.FC<InvoicePreviewProps> = ({
                 className="text-2xl font-bold text-gray-900 mb-1"
                 style={{ fontFamily: "serif" }}
               >
-                Tax Invoice
+                {isQuotation ? 'Quotation' : 'Tax Invoice'}
               </h1>
               <h2 className="text-xl font-bold text-gray-800">
                 {invoice.companyInfo.name}
@@ -112,10 +114,10 @@ const InvoicePreview: React.FC<InvoicePreviewProps> = ({
               </div>
               <div className="text-right">
                 <h3 className="font-semibold text-gray-900 mb-1 text-sm">
-                  Invoice Details:
+                   {isQuotation ? 'Quotation' : 'Invoice'} Details:
                 </h3>
                 <div className="text-xs text-gray-700 space-y-0.5">
-                  <p>Invoice No: {invoice.invoiceNumber}</p>
+                   <p>{isQuotation ? 'Quotation' : 'Invoice'} No: {invoice.invoiceNumber}</p>
                   <p>
                     Date: {new Date(invoice.date).toLocaleDateString("en-IN")}
                   </p>
@@ -327,6 +329,11 @@ const InvoicePreview: React.FC<InvoicePreviewProps> = ({
               <p>
                 Certified that the particulars given above are true and correct.
               </p>
+              {isQuotation && (
+                <p className="text-center mt-1 text-xs text-gray-500">
+                  This is a quotation and not a tax invoice.
+                </p>
+              )}
               <p>For {invoice.companyInfo.name}</p>
             </div>
           </div>

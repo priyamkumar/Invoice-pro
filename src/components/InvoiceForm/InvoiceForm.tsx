@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Plus } from "lucide-react";
+import { Plus, FileText, Receipt } from "lucide-react";
 import { InvoiceItem, TaxSettings } from "../../types";
 import { useInvoice } from "../../context/InvoiceContext";
 import {
@@ -18,6 +18,7 @@ const InvoiceForm: React.FC = () => {
   const [invoiceDate, setInvoiceDate] = useState(
     new Date().toISOString().split("T")[0]
   );
+  const [isQuotation, setIsQuotation] = useState(false);
   const [invoiceNumber, setInvoiceNumber] = useState("1");
   const [items, setItems] = useState<InvoiceItem[]>([]);
   const [taxSettings, setTaxSettings] = useState<TaxSettings>({
@@ -135,7 +136,9 @@ const InvoiceForm: React.FC = () => {
   const handlePreview = () => {
     if (!selectedClientId || items.length === 0) {
       alert(
-        "Please select a client and add at least one item to preview the invoice."
+        `Please select a client and add at least one item to preview the ${
+          isQuotation ? "quotation" : "invoice"
+        }.`
       );
       return;
     }
@@ -168,6 +171,7 @@ const InvoiceForm: React.FC = () => {
     return (
       <InvoicePreview
         invoice={invoice}
+        isQuotation={isQuotation}
         client={selectedClient}
         onBack={() => setShowPreview(false)}
         saved={false}
@@ -179,8 +183,34 @@ const InvoiceForm: React.FC = () => {
     <div className="space-y-6">
       <div className="bg-white rounded-lg shadow-md p-6">
         <h1 className="text-2xl font-bold text-gray-900 mb-6">
-          Create New Invoice
+          Create New {isQuotation ? "Quotation" : "Invoice"}
         </h1>
+        <div className="flex items-center bg-gray-100 rounded-lg p-1">
+          <button
+            type="button"
+            onClick={() => setIsQuotation(false)}
+            className={`flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+              !isQuotation
+                ? "bg-white text-blue-600 shadow-sm"
+                : "text-gray-600 hover:text-gray-800"
+            }`}
+          >
+            <Receipt className="h-4 w-4 mr-2" />
+            Invoice
+          </button>
+          <button
+            type="button"
+            onClick={() => setIsQuotation(true)}
+            className={`flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+              isQuotation
+                ? "bg-white text-green-600 shadow-sm"
+                : "text-gray-600 hover:text-gray-800"
+            }`}
+          >
+            <FileText className="h-4 w-4 mr-2" />
+            Quotation
+          </button>
+        </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2">
@@ -195,7 +225,7 @@ const InvoiceForm: React.FC = () => {
 
             <div className="bg-white rounded-lg shadow-md p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                Invoice Details
+                {isQuotation ? 'Quotation' : 'Invoice'} Details
               </h3>
               <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -210,7 +240,7 @@ const InvoiceForm: React.FC = () => {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Invoice Date
+                  {isQuotation ? 'Quotation' : 'Invoice'} Date
                 </label>
                 <input
                   type="date"
@@ -226,7 +256,7 @@ const InvoiceForm: React.FC = () => {
 
       <div className="bg-white rounded-lg shadow-md p-6">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-gray-900">Invoice Items</h3>
+          <h3 className="text-lg font-semibold text-gray-900">{isQuotation ? 'Quotation' : 'Invoice'} Items</h3>
           <button
             type="button"
             onClick={addItem}
@@ -261,21 +291,22 @@ const InvoiceForm: React.FC = () => {
                 </th>
                 {taxSettings.showUTGST && (
                   <>
-                  <th className="px-3 py-2 text-center text-xs font-medium text-purple-600 uppercase">
-                    UTGST Rate
-                  </th>
-                  <th className="px-3 py-2 text-center text-xs font-medium text-purple-600 uppercase">
-                    UTGST Amt.
-                  </th></>
+                    <th className="px-3 py-2 text-center text-xs font-medium text-purple-600 uppercase">
+                      UTGST Rate
+                    </th>
+                    <th className="px-3 py-2 text-center text-xs font-medium text-purple-600 uppercase">
+                      UTGST Amt.
+                    </th>
+                  </>
                 )}
                 {taxSettings.showCGST && (
                   <>
-                  <th className="px-3 py-2 text-center text-xs font-medium text-green-600 uppercase">
-                    CGST Rate
-                  </th>
-                   <th className="px-3 py-2 text-center text-xs font-medium text-green-600 uppercase">
-                    CGST Amt.
-                  </th>
+                    <th className="px-3 py-2 text-center text-xs font-medium text-green-600 uppercase">
+                      CGST Rate
+                    </th>
+                    <th className="px-3 py-2 text-center text-xs font-medium text-green-600 uppercase">
+                      CGST Amt.
+                    </th>
                   </>
                 )}
                 {taxSettings.showIGST && (
@@ -339,7 +370,7 @@ const InvoiceForm: React.FC = () => {
 
         <div className="bg-white rounded-lg shadow-md p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">
-            Invoice Summary
+            {isQuotation ? 'Quotation' : 'Invoice'} Summary
           </h3>
           <div className="space-y-2">
             <div className="flex justify-between">
@@ -378,7 +409,7 @@ const InvoiceForm: React.FC = () => {
             onClick={handlePreview}
             className="w-full mt-6 bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition-colors font-medium"
           >
-            Preview Invoice
+            Preview {isQuotation ? 'Quotation' : 'Invoice'}
           </button>
         </div>
       </div>
